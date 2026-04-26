@@ -1,0 +1,269 @@
+
+# probability of complete observations
+p <- 6/10 
+q <- 1/p
+q1 <- q/3
+q2 <- q/3
+q3 <- q/3
+
+# define matrix to save RMSE
+RMSE <- matrix(0, 0, 25)
+
+# define spaces to save value
+for (z in 1:9) 
+{
+my_vec <- 1:9
+result <- matrix(0, 5000, 9)
+#cc
+estc.p <- matrix(0, 5000, 4)
+#em
+est.p <- matrix(0, 5000, 4)
+#aem
+esta.p <- matrix(0, 5000, 4)
+#uniform
+estu.p <- matrix(0, 5000, 4) 
+#ssi
+ests.p <- matrix(0, 5000,4)
+
+# parameters in each scenario
+# change by hand
+p11 <- 0.25-(z*0.03-0.03)
+p12 <- 0.25
+p21 <- 0.25+(z*0.03-0.03)
+p22 <- 0.25
+
+# for each k, sample numbers from 1:8 total of 1000 times
+# "sim" represents probability on each cell
+# "sim_values" = counts on each cell
+for(k in 1:5000)
+{
+sim <- sample(my_vec, size = 1000, replace = TRUE,
+prob=c(p11*p, p12*p, p21*p, p22*p,
+(p11+p21)*q1, (p12+p22)*q1,
+(p11+p12)*q2, (p21+p22)*q2,q3))
+sim_values <- as.numeric(table(factor(sim, levels = 1:9)))
+result[k, ] <- sim_values
+
+a11 <- result[k,1]
+a12 <- result[k,2]
+a21 <- result[k,3]
+a22 <- result[k,4]
+m.col1 <- result[k,5]
+m.col2 <- result[k,6]
+m.row1 <- result[k,7]
+m.row2 <- result[k,8]
+m.both <- result[k,9]
+t <- a11 + a12 + a21 + a22 + m.row1 + m.row2 + m.col1 +m.col2 +m.both
+
+# Define a 2 by 2 matrix
+Mat.no.missing <- matrix(c(a11,a12,a21,a22),ncol = 2, byrow=TRUE)
+Pi <- matrix(0,nrow=2,ncol=2)
+Pi[1,1] <- Mat.no.missing[1,1]/margin.table(Mat.no.missing)
+Pi[1,2] <- Mat.no.missing[1,2]/margin.table(Mat.no.missing)
+Pi[2,1] <- Mat.no.missing[2,1]/margin.table(Mat.no.missing)
+Pi[2,2] <- Mat.no.missing[2,2]/margin.table(Mat.no.missing)
+
+# CC Analysis 
+CPi <- matrix(0,nrow = 1, ncol = 4)
+CPi[1,1] <- Pi[1,1]
+CPi[1,2] <- Pi[1,2]
+CPi[1,3] <- Pi[2,1]
+CPi[1,4] <- Pi[2,2]
+estc.p[k,] <- as.numeric(CPi[1,])
+
+# EM algorithm
+EM.output <- matrix(0,nrow = 1, ncol = 4)
+EM.output[1,1] <- Pi[1,1]
+EM.output[1,2] <- Pi[1,2]
+EM.output[1,3] <- Pi[2,1]
+EM.output[1,4] <- Pi[2,2]
+colnames(EM.output) <- c("Pi11","Pi12","Pi21","Pi22")
+new_EM.output <- matrix(0,nrow = 1,ncol = 4)
+
+B <- 100
+for (i in 1:B) {
+  if (new_EM.output[1,1] - EM.output[1,1] == 0) {
+    break
+   }
+EM.output[1,1] <- Pi[1,1]
+EM.output[1,2] <- Pi[1,2]
+EM.output[1,3] <- Pi[2,1]
+EM.output[1,4] <- Pi[2,2]
+Pi[1,1] <- (1/t)*((1+(m.both/(t-m.both)))*(a11 +
+  m.row1*(Pi[1,1]/(Pi[1,1]+Pi[1,2])) + m.col1*(Pi[1,1]/(Pi[1,1]+Pi[2,1]))) )
+ Pi[1,2] <- (1/t)*((1+(m.both/(t-m.both)))*(a12 +
+  m.row1*(Pi[1,2]/(Pi[1,1]+Pi[1,2])) + m.col2*(Pi[1,2]/(Pi[1,2]+Pi[2,2]))) )
+ Pi[2,1] <- (1/t)*((1+(m.both/(t-m.both)))*(a21 +
+  m.row2*(Pi[2,1]/(Pi[2,1]+Pi[2,2])) + m.col1*(Pi[2,1]/(Pi[1,1]+Pi[2,1]))) )
+ Pi[2,2] <- (1/t)*((1+(m.both/(t-m.both)))*(a22 +
+  m.row2*(Pi[2,2]/(Pi[2,1]+Pi[2,2]) )+ m.col2*(Pi[2,2]/(Pi[1,2]+Pi[2,2]))) )
+new_EM.output[1,1] <- Pi[1,1]
+new_EM.output[1,2] <- Pi[1,2]
+new_EM.output[1,3] <- Pi[2,1]
+new_EM.output[1,4] <- Pi[2,2]
+}
+est.p[k,] <- as.numeric(new_EM.output[1,])
+
+# AEM algorithm
+APi <- matrix(0,nrow=2,ncol=2)
+APi[1,1] <- Mat.no.missing[1,1]/margin.table(Mat.no.missing)
+APi[1,2] <- Mat.no.missing[1,2]/margin.table(Mat.no.missing)
+APi[2,1] <- Mat.no.missing[2,1]/margin.table(Mat.no.missing)
+APi[2,2] <- Mat.no.missing[2,2]/margin.table(Mat.no.missing)
+
+AEM.output <- matrix(0,nrow = 1, ncol = 4)
+AEM.output[1,1] <- APi[1,1]
+AEM.output[1,2] <- APi[1,2]
+AEM.output[1,3] <- APi[2,1]
+AEM.output[1,4] <- APi[2,2]
+colnames(AEM.output) <- c("Pi11","Pi12","Pi21","Pi22")
+new_AEM.output <- matrix(0,nrow = 1,ncol = 4)
+
+B <- 100
+for (w in 1:B){
+  if (new_AEM.output[1,1] - AEM.output[1,1] == 0) {
+    break
+  }
+AEM.output[1,1] <- APi[1,1]
+AEM.output[1,2] <- APi[1,2]
+AEM.output[1,3] <- APi[2,1]
+AEM.output[1,4] <- APi[2,2]
+ APi[1,1] <- (1/t)*((1+(m.both/(t-m.both)))*(a11 +
+  m.row1*(APi[1,1]+APi[2,1]) + m.col1*(APi[1,1]+Pi[1,2])) )
+ APi[1,2] <- (1/t)*((1+(m.both/(t-m.both)))*(a12 +
+  m.row1*(APi[1,2]+APi[2,2]) + m.col2*(APi[1,2]+APi[1,1])) )
+ APi[2,1] <- (1/t)*((1+(m.both/(t-m.both)))*(a21 +
+  m.row2*(APi[2,1]+APi[1,1]) + m.col1*(APi[2,1]+APi[2,2])) )
+ APi[2,2] <- (1/t)*((1+(m.both/(t-m.both)))*(a22 +
+  m.row2*(APi[2,2]+APi[1,2])+ m.col2*(APi[2,2]+APi[2,1])) )
+AEM.output <- rbind(AEM.output,c(APi[1,1],APi[1,2],APi[2,1],
+APi[2,2]) )
+new_AEM.output[1,1] <- APi[1,1]
+new_AEM.output[1,2] <- APi[1,2]
+new_AEM.output[1,3] <- APi[2,1]
+new_AEM.output[1,4] <- APi[2,2]
+}
+esta.p[k,] <- as.numeric(new_AEM.output[1,])
+
+#SSI
+sum_a11 <- 0
+sum_a12 <- 0
+sum_a21 <- 0
+sum_a22 <- 0
+
+weight_row1 <- c(a11/(a11+a12),a12/(a11+a12))
+
+group_indices_row1 <- sample(1:2, m.row1, replace = TRUE, prob = weight_row1)
+sum_a11 <- sum_a11 + sum(group_indices_row1 == 1)
+sum_a12 <- sum_a12 + sum(group_indices_row1 == 2)
+
+weight_row2 <- c(a21/(a21+a22),a22/(a21+a22))
+group_indices_row2 <- sample(1:2, m.row2, replace = TRUE, prob = weight_row2)
+sum_a21 <- sum_a21 + sum(group_indices_row2 == 1)
+sum_a22 <- sum_a22 + sum(group_indices_row2 == 2)
+
+weight_col1 <- c(a11/(a11+a21),a21/(a11+a21))
+group_indices_col1 <- sample(1:2, m.col1, replace = TRUE, prob = weight_col1)
+sum_a11 <- sum_a11 + sum(group_indices_col1 == 1)
+sum_a21 <- sum_a21 + sum(group_indices_col1 == 2)
+
+weight_col2 <- c(a12/(a12+a22),a22/(a12+a22))
+group_indices_col2 <- sample(1:2, m.col2, replace = TRUE, prob = weight_col2)
+sum_a12 <- sum_a12 + sum(group_indices_col2 == 1)
+sum_a22 <- sum_a22 + sum(group_indices_col2 == 2)
+
+weight_both <- c(a11/(a11+a12+a21+a22),a12/(a11+a12+a21+a22),a21/(a11+a12+a21+a22),a22/(a11+a12+a21+a22))
+
+group_indices_both <- sample(1:4, m.both, replace = TRUE, prob = weight_both)
+sum_a11 <- sum_a11 + sum(group_indices_both == 1)
+sum_a12 <- sum_a12 + sum(group_indices_both == 2)
+sum_a21 <- sum_a21 + sum(group_indices_both == 3)
+sum_a22 <- sum_a22 + sum(group_indices_both == 4)
+
+a11_new <- a11 + sum_a11
+a12_new <- a12 + sum_a12
+a21_new <- a21 + sum_a21
+a22_new <- a22 + sum_a22
+
+a11_new/(a11_new+a12_new+a21_new+a22_new)
+a12_new/(a11_new+a12_new+a21_new+a22_new)
+a21_new/(a11_new+a12_new+a21_new+a22_new)
+a22_new/(a11_new+a12_new+a21_new+a22_new)
+SSI.output <- matrix(0,nrow = 1, ncol = 4)
+SSI.output[1,1] <- a11_new/(a11_new+a12_new+a21_new+a22_new)
+SSI.output[1,2] <- a12_new/(a11_new+a12_new+a21_new+a22_new)
+SSI.output[1,3] <- a21_new/(a11_new+a12_new+a21_new+a22_new)
+SSI.output[1,4] <- a22_new/(a11_new+a12_new+a21_new+a22_new)
+ests.p[k,] <- as.numeric(SSI.output[1,])
+
+# uniform
+UPi <- matrix(0,nrow=2,ncol=2)
+UPi[1,1] <- Mat.no.missing[1,1]/margin.table(Mat.no.missing)
+UPi[1,2] <- Mat.no.missing[1,2]/margin.table(Mat.no.missing)
+UPi[2,1] <- Mat.no.missing[2,1]/margin.table(Mat.no.missing)
+UPi[2,2] <- Mat.no.missing[2,2]/margin.table(Mat.no.missing)
+UEM.output <- matrix(0,nrow = 1, ncol = 4)
+UEM.output[1,1] <- UPi[1,1]
+UEM.output[1,2] <- UPi[1,2]
+UEM.output[1,3] <- UPi[2,1]
+UEM.output[1,4] <- UPi[2,2]
+colnames(UEM.output) <- c("Pi11","Pi12","Pi21","Pi22")
+
+UPi[1,1] <- (1/t)*(a11 + m.row1*(1/2) 
++ m.col1*(1/2) + m.both/4 )
+UPi[1,2] <- (1/t)*(a12 + m.row1*(1/2)
++ m.col2*(1/2) + m.both/4 )
+UPi[2,1] <- (1/t)*(a21 + m.row2*(1/2)
++ m.col1*(1/2) + m.both/4 )
+UPi[2,2] <- (1/t)*(a22 + m.row2*(1/2)
++ m.col2*(1/2) + m.both/4 )
+UEM.output <- rbind(UEM.output,c(UPi[1,1],UPi[1,2],
+UPi[2,1],UPi[2,2]) )
+
+estu.p[k,] <- as.numeric(UEM.output[2,])
+}
+
+rmse <- matrix(0, 1 , 25)
+rmse[1,1]<-sqrt(var(estc.p[,1]) + (mean(estc.p[,1]) - p11)^2)
+rmse[1,2]<-sqrt(var(estc.p[,2]) + (mean(estc.p[,2]) - p12)^2)
+rmse[1,3]<-sqrt(var(estc.p[,3]) + (mean(estc.p[,3]) - p21)^2)
+rmse[1,4]<-sqrt(var(estc.p[,4]) + (mean(estc.p[,4]) - p22)^2)
+rmse[1,5]<-mean(rmse[1,1:4])
+
+rmse[1,6]<-sqrt(var(est.p[,1]) + (mean(est.p[,1]) - p11)^2)
+rmse[1,7]<-sqrt(var(est.p[,2]) + (mean(est.p[,2]) - p12)^2)
+rmse[1,8]<-sqrt(var(est.p[,3]) + (mean(est.p[,3]) - p21)^2)
+rmse[1,9]<-sqrt(var(est.p[,4]) + (mean(est.p[,4]) - p22)^2)
+rmse[1,10]<-mean(rmse[1,6:9])
+
+rmse[1,11]<-sqrt(var(esta.p[,1]) + (mean(esta.p[,1]) - p11)^2)
+rmse[1,12]<-sqrt(var(esta.p[,2]) + (mean(esta.p[,2]) - p12)^2)
+rmse[1,13]<-sqrt(var(esta.p[,3]) + (mean(esta.p[,3]) - p21)^2)
+rmse[1,14]<-sqrt(var(esta.p[,4]) + (mean(esta.p[,4]) - p22)^2)
+rmse[1,15]<-mean(rmse[1,11:14])
+
+rmse[1,16]<-sqrt(var(ests.p[,1]) + (mean(ests.p[,1]) - p11)^2)
+rmse[1,17]<-sqrt(var(ests.p[,2]) + (mean(ests.p[,2]) - p12)^2)
+rmse[1,18]<-sqrt(var(ests.p[,3]) + (mean(ests.p[,3]) - p21)^2)
+rmse[1,19]<-sqrt(var(ests.p[,4]) + (mean(ests.p[,4]) - p22)^2)
+rmse[1,20]<-mean(rmse[1,16:19])
+
+rmse[1,21]<-sqrt(var(estu.p[,1]) + (mean(estu.p[,1]) - p11)^2)
+rmse[1,22]<-sqrt(var(estu.p[,2]) + (mean(estu.p[,2]) - p12)^2)
+rmse[1,23]<-sqrt(var(estu.p[,3]) + (mean(estu.p[,3]) - p21)^2)
+rmse[1,24]<-sqrt(var(estu.p[,4]) + (mean(estu.p[,4]) - p22)^2)
+rmse[1,25]<-mean(rmse[1,21:24])
+rmse_vec <- c(t(rmse))
+RMSE <- rbind(RMSE,rmse_vec)
+
+}
+colnames(rmse) <- c("Pi[1,1]CC","Pi[1,2]CC","Pi[2,1]CC","Pi[2,2]CC","MCPi","Pi[1,1]EM", "Pi[1,2]EM", "Pi[2,1]EM",
+"Pi[2,2]EM","MPi", "Pi[1,1]AEM", "Pi[1,2]AEM",
+"Pi[2,1]AEM", "Pi[2,2]AEM","MAPi","Pi[1,1]SSI","Pi[1,2]SSI","Pi[2,1]SSI","Pi[2,2]SSI","MSPi","Pi[1,1]UEM",
+"Pi[1,2]UEM", "Pi[2,1]UEM", "Pi[2,2]UEM","MUPi")
+rownames(RMSE) <- c("0.00","0.03", "0.06", "0.09", "0.12","0.15", "0.18", "0.21", "0.24")
+colnames(RMSE) <- c("Pi[1,1]CC","Pi[1,2]CC","Pi[2,1]CC","Pi[2,2]CC","MCPi","Pi[1,1]EM", "Pi[1,2]EM", "Pi[2,1]EM",
+"Pi[2,2]EM","MPi", "Pi[1,1]AEM", "Pi[1,2]AEM",
+"Pi[2,1]AEM", "Pi[2,2]AEM","MAPi","Pi[1,1]SSI","Pi[1,2]SSI","Pi[2,1]SSI","Pi[2,2]SSI","MSPi","Pi[1,1]UEM",
+"Pi[1,2]UEM", "Pi[2,1]UEM", "Pi[2,2]UEM","MUPi")
+
